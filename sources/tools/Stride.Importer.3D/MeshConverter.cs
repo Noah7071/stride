@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation and Contributors (https://dotnetfoundation.org/ & https://stride3d.net)
+﻿// Copyright (c) .NET Foundation and Contributors (https://dotnetfoundation.org/ & https://stride3d.net)
 // Distributed under the MIT license. See the LICENSE.md file in the project root for more information.
 
 using System;
@@ -324,9 +324,8 @@ namespace Stride.Importer.ThreeD
                     var nodeAnim = aiAnim->MChannels[nodeAnimId];
                     var nodeName = nodeAnim->MNodeName.AsString;
 
-                    if (!visitedNodeNames.Contains(nodeName))
+                    if (visitedNodeNames.Add(nodeName))
                     {
-                        visitedNodeNames.Add(nodeName);
                         ProcessNodeAnimation(animationData.AnimationClips, nodeAnim, ticksPerSec);
                     }
                     else
@@ -461,10 +460,8 @@ namespace Stride.Importer.ThreeD
 
                 tempNames.Add(itemName);
 
-                // count the occurences of this name
-                if (!itemNameTotalCount.ContainsKey(itemName))
-                    itemNameTotalCount.Add(itemName, 1);
-                else
+                // count the occurrences of this name
+                if (!itemNameTotalCount.TryAdd(itemName, 1))
                     itemNameTotalCount[itemName]++;
             }
 
@@ -475,9 +472,7 @@ namespace Stride.Importer.ThreeD
 
                 if (itemNameTotalCount[itemName] > 1)
                 {
-                    if (!itemNameCurrentCount.ContainsKey(itemName))
-                        itemNameCurrentCount.Add(itemName, 1);
-                    else
+                    if (!itemNameCurrentCount.TryAdd(itemName, 1))
                         itemNameCurrentCount[itemName]++;
 
                     itemName = itemName + "_" + itemNameCurrentCount[itemName].ToString(CultureInfo.InvariantCulture);
@@ -496,7 +491,11 @@ namespace Stride.Importer.ThreeD
                 baseNames.Add(lMesh->MName.AsString);
             }
 
-            GenerateUniqueNames(meshNames, baseNames, i => (IntPtr)scene->MMeshes[i]);
+            // We're not calling GenerateUniqueNames here as it clashes with how ProcessNodeAnimation operates, we would need to remap the names appropriately
+            for (int i = 0; i < baseNames.Count; i++)
+            {
+                meshNames.Add((IntPtr)scene->MMeshes[i], baseNames[i]);
+            }
         }
 
         private unsafe void GenerateAnimationNames(Scene* scene, Dictionary<IntPtr, string> animationNames)
@@ -518,7 +517,11 @@ namespace Stride.Importer.ThreeD
             var orderedNodes = new List<IntPtr>();
 
             GetNodeNames(scene->MRootNode, baseNames, orderedNodes);
-            GenerateUniqueNames(nodeNames, baseNames, i => orderedNodes[i]);
+            // We're not calling GenerateUniqueNames here as it clashes with how ProcessNodeAnimation operates, we would need to remap the names appropriately
+            for (int i = 0; i < baseNames.Count; i++)
+            {
+                nodeNames.Add(orderedNodes[i], baseNames[i]);
+            }
         }
 
         private unsafe void GetNodeNames(Node* node, List<string> nodeNames, List<IntPtr> orderedNodes)
@@ -626,10 +629,6 @@ namespace Stride.Importer.ThreeD
                     // find the node where the bone is mapped - based on the name(?)
                     var nodeIndex = -1;
                     var boneName = bone->MName.AsString;
-                    foreach (char c in Path.GetInvalidFileNameChars())
-                    {
-                        boneName = boneName.Replace(c, '_');
-                    }
                     for (var nodeDefId = 0; nodeDefId < nodes.Count; ++nodeDefId)
                     {
                         var nodeDef = nodes[nodeDefId];
@@ -642,7 +641,7 @@ namespace Stride.Importer.ThreeD
 
                     if (nodeIndex == -1)
                     {
-                        Logger.Error($"No node found for name {boneId}:{boneName}");
+                        Logger.Error($"No node found for id:'{boneId}' name:'{boneName}'");
                         nodeIndex = 0;
                     }
 

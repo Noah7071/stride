@@ -98,20 +98,15 @@ namespace Stride.Assets.Models
             }
 
             // 3. Animation
-            if (importParameters.IsTypeSelectedForOutput<AnimationAsset>())
+            if (importParameters.IsTypeSelectedForOutput<AnimationAsset>() && entityInfo.AnimationNodes != null)
             {
-                int _iAnimIndex = 0;
-                entityInfo?.AnimationNodes?.ForEach(c =>
+                for (int i = 0; i < entityInfo.AnimationNodes.Count; i++)
                 {
                     TimeSpan startTime, endTime;
-                    GetAnimationDuration(localPath, importParameters.Logger, importParameters, _iAnimIndex, out startTime, out endTime);
+                    GetAnimationDuration(localPath, importParameters.Logger, importParameters, i, out startTime, out endTime);
 
-                    ImportAnimation(rawAssetReferences, localPath, entityInfo.AnimationNodes[_iAnimIndex], _iAnimIndex, skeletonAsset, startTime, endTime);
-
-                    _iAnimIndex++;
-                }); 
-
-                
+                    ImportAnimation(rawAssetReferences, localPath, entityInfo.AnimationNodes[i], i, skeletonAsset, startTime, endTime);
+                }
             }
 
             // 4. Materials
@@ -167,35 +162,24 @@ namespace Stride.Assets.Models
             }
         }
 
-
         private static void ImportAnimation(List<AssetItem> assetReferences, UFile localPath, string animationNodeName, int animationNodeIndex, AssetItem skeletonAsset, TimeSpan animationStartTime, TimeSpan animationEndTime)
         {
             var assetSource = localPath;
             var asset = new AnimationAsset { Source = assetSource, AnimationTimeMaximum = animationEndTime, AnimationTimeMinimum = animationStartTime };
 
-            var animNodePostFix = new StringBuilder();
-            foreach (var charNodeName in animationNodeName)
+            var nodeName = animationNodeName;
+            foreach (char c in Path.GetInvalidFileNameChars())
             {
-                if (Path.GetInvalidFileNameChars().Contains(charNodeName))
-                {
-                    animNodePostFix.Append("_");
-                }
-                else
-                {
-                    animNodePostFix.Append(charNodeName);
-                }
+                nodeName = nodeName.Replace(c, '_');
             }
 
-            var animUrl = localPath.GetFileNameWithoutExtension() + "_" + animNodePostFix.ToString();
+            var animUrl = localPath.GetFileNameWithoutExtension() + "_" + nodeName;
             asset.AnimationStack = animationNodeIndex;
             if (skeletonAsset != null)
                 asset.Skeleton = AttachedReferenceManager.CreateProxyObject<Skeleton>(skeletonAsset.Id, skeletonAsset.Location);
 
             assetReferences.Add(new AssetItem(animUrl, asset));
         }
-        
-
-
 
         private static void ImportModel(List<AssetItem> assetReferences, UFile assetSource, UFile localPath, EntityInfo entityInfo, bool shouldPostFixName, AssetItem skeletonAsset)
         {

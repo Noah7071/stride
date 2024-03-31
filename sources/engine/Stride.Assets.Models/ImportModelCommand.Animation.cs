@@ -94,11 +94,6 @@ namespace Stride.Assets.Models
                     foreach (var nodeAnimationClipEntry in animationClips)
                     {
                         var nodeName = nodeAnimationClipEntry.Key;
-                        foreach (char c in Path.GetInvalidFileNameChars())
-                        {
-                            nodeName = nodeName.Replace(c, '_');
-                        }
-                                   
                         var nodeAnimationClip = nodeAnimationClipEntry.Value;
                         var nodeIndex = modelSkeleton.Nodes.IndexOf(x => x.Name == nodeName.ToString());
 
